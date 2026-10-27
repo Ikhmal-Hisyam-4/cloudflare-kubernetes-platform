@@ -59,7 +59,7 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: worker/package-lock.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: frontend-dist
           path: frontend/dist
