@@ -38,7 +38,7 @@ jobs:
       # /api = same-origin API, because the Worker serves the app and the API together.
       - run: VITE_API_URL=/api npm run build
       # Build once: the worker job tests it and deploy.yml ships this exact build.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist
