@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kubex",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+
+  // Serves the built React app and the /api/* routes from one Worker (same origin, no CORS).
+  "assets": {
+    "directory": "../frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kubex-db",
+      "database_id": "1cf4cb2d-6730-4bf3-a329-f49c90da9974",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Custom domain (zone must be on this Cloudflare account). Cloudflare creates the DNS record + TLS cert.
+  "routes": [{ "pattern": "gpu.kubex.my", "custom_domain": true }],
+
+  // Hourly billing (replaces APScheduler).
+  "triggers": { "crons": ["0 * * * *"] },
+
+  "vars": {
+    "JWT_EXPIRE_MINUTES": "1440",
+    "STORAGE_RATE_PER_GB_HOUR_CENTS": "1"
+  },
+
+  // Everything above is production (`wrangler deploy`). Staging is `wrangler deploy --env staging`:
+  // a separate Worker + database that the `development` branch deploys to. Wrangler does not inherit
+  // bindings, triggers or vars into an environment, so staging repeats them. It has no custom domain,
+  // so it lives on https://kubex-staging.<account-subdomain>.workers.dev.
+  "env": {
+    "staging": {
+      "name": "kubex-staging",
+      // Must be explicit: otherwise staging inherits the production custom domain and steals it.
+      "routes": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "kubex-staging-db",
+          "database_id": "5e1932eb-7e28-4cad-8ad4-246ea383e4cd",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "triggers": { "crons": ["0 * * * *"] },
+      "vars": {
+        "JWT_EXPIRE_MINUTES": "1440",
+        "STORAGE_RATE_PER_GB_HOUR_CENTS": "1"
+      }
+    }
+  }
+}

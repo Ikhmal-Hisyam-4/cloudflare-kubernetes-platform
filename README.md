@@ -1,333 +1,158 @@
-# Kubernetes Platform — gpu.kubex.my
+# cloudflare-kubernetes-platform — gpu.kubex.my
 
 ![Live](https://img.shields.io/badge/Live-gpu.kubex.my-brightgreen?style=flat-square&logo=cloudflare)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-RKE2-326CE5?style=flat-square&logo=kubernetes&logoColor=white)
-![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white)
-![Ansible](https://img.shields.io/badge/Config-Ansible-EE0000?style=flat-square&logo=ansible&logoColor=white)
-![GitLab CI](https://img.shields.io/badge/CI%2FCD-GitLab-FC6D26?style=flat-square&logo=gitlab&logoColor=white)
-![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
-![AWS ECR](https://img.shields.io/badge/Registry-AWS%20ECR-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
-![Grafana](https://img.shields.io/badge/Monitoring-Grafana%20%2B%20Prometheus-F46800?style=flat-square&logo=grafana&logoColor=white)
+![Cloudflare Workers](https://img.shields.io/badge/Runtime-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white)
+![D1](https://img.shields.io/badge/Database-Cloudflare%20D1-F38020?style=flat-square&logo=cloudflare&logoColor=white)
+![Hono](https://img.shields.io/badge/API-Hono-E36002?style=flat-square&logo=hono&logoColor=white)
+![React](https://img.shields.io/badge/UI-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react&logoColor=black)
+![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 
-An end-to-end DevOps project built completely from scratch — starting from bare-metal servers and a raw managed switch, all the way up to a live, HTTPS-secured web application running on a self-managed Kubernetes cluster.
+**Kubex** is a simulated GPU cloud marketplace (think vast.ai / TensorDock): browse GPU and CPU plans, deposit funds, deploy
+virtual servers, and get billed hourly. It runs entirely on Cloudflare's free tier — no servers, containers or VPS to maintain.
 
-The application simulates a **GPU cloud marketplace** called Kubex — where users can browse GPU instances (RTX 4090, RTX 6000, Blackwell GB10), view pricing, and deploy servers. Modelled after platforms like vast.ai and TensorDock, running on fully self-managed infrastructure.
+> **Live:** https://gpu.kubex.my — browse the deploy pages and dashboard without signing in (demo data), or create an account to deploy.
 
-> **Live:** https://gpu.kubex.my
-> **Full Documentation:** https://www.notion.so/370f5cca41248112ad22f06d5a35f8f6
-> **GitLab:** https://gitlab.com/ikhmal/kubernetes-platform
+## History
 
----
+This project started as a self-managed Kubernetes platform (RKE2 on bare metal, Terraform, Ansible, GitLab CI, and later AWS).
+It was migrated to a serverless Cloudflare stack so it can stay online 24/7 at no cost. The original infrastructure code and the
+Python/FastAPI backend are in the git history; `backend/` is kept as the reference implementation of the API.
 
-## Architecture Diagram
-
-![Architecture Diagram](architecture-diagram/architecture-diagram.png)
-
----
-
-## Tech Stack
-
-| Layer | Technology | Detail |
-|---|---|---|
-| **Network** | pfSense + S3900-24T4S | Firewall, DHCP, DNS, 4-VLAN segmentation |
-| **Virtualisation** | Harvester HCI | 3-node bare-metal HCI cluster (KubeVirt) |
-| **Cluster Management** | Rancher | Manages Harvester + provisions RKE2 |
-| **OS** | Rocky Linux 9.7 | All 3 RKE2 nodes (cloud-init provisioned) |
-| **Kubernetes** | RKE2 | 3 nodes, all roles: control-plane + etcd + worker |
-| **CNI** | Calico | Pod networking on VLAN 50 |
-| **Storage** | Longhorn | Distributed block storage, 3x replication |
-| **Observability** | Prometheus + Loki + Grafana | Metrics, logs, dashboards |
-| **IaC** | Terraform + Ansible | VM provisioning + cluster bootstrap |
-| **Frontend** | React + Vite + TypeScript + Tailwind CSS | 4 pages, served by nginx |
-| **Backend** | Node.js + Express + Prisma | REST API on port 3001 |
-| **Database** | PostgreSQL 16 Alpine | In-cluster, Longhorn PVC |
-| **Containers** | Docker (multi-stage Dockerfiles) | Local dev via docker-compose |
-| **Registry** | AWS ECR (ap-southeast-1) | kubex/frontend + kubex/backend |
-| **CI/CD** | GitLab CI + self-hosted Runner | 4 stages, shell executor on rgx-node-01 |
-| **Public Access** | Cloudflare Tunnel | HTTPS, no open inbound ports required |
-| **Backup** | AWS S3 | Harvester VM snapshots |
-
----
-
-## Network Design
-
-4 VLANs segment traffic across the infrastructure:
-
-| VLAN | Name | Subnet | Purpose |
-|---|---|---|---|
-| 10 | Management | 10.10.10.0/24 | SSH, Rancher UI, switch admin |
-| 30 | VM Network | 10.10.30.0/24 | RKE2 node traffic |
-| 40 | Storage | 10.10.40.0/24 | Longhorn replication (isolated) |
-| 50 | Kubernetes | 10.10.50.0/24 | Pod and service networking |
-
-Each Harvester node has 2 NICs — `eno1` for management (VLAN 10) and `eno2` dedicated to storage (VLAN 40). This ensures Longhorn replication never competes with cluster traffic.
-
----
-
-## Hardware
-
-| Hostname | Model | CPU | RAM | Storage | Role |
-|---|---|---|---|---|---|
-| lab-rancher | Supermicro X10DRL-i | 44 cores | 16 GB | 2x 1TB SSD | Rancher Server |
-| lab-hvst-01 | Supermicro X10DRL-i | 44 cores | 32 GB | 2x 1TB SSD | Harvester Primary |
-| lab-hvst-02 | Supermicro X9DRL-EF | 40 cores | 32 GB | 2x 1TB SSD | Harvester Node |
-| lab-hvst-03 | Supermicro X9DRL-EF | 40 cores | 32 GB | 2x 1TB SSD | Harvester Node |
-
----
-
-## Project Structure
+## Architecture
 
 ```
-kubernetes-platform/
-├── terraform/                       # VM provisioning on Harvester
-│   ├── providers.tf                 # Harvester, Rancher, K8s, Helm providers
-│   ├── variables.tf                 # Input variables with defaults
-│   ├── main.tf                      # VM resources + cloud-init scripts
-│   ├── outputs.tf                   # Node IPs and cluster info
-│   ├── terraform.tfvars.example     # Template — copy and fill in your values
-│   └── COMMANDS.md                  # Quick reference commands
-│
-├── ansible/                         # Cluster bootstrap and configuration
-│   ├── site.yml                     # Master playbook (runs all below in order)
-│   ├── gitlab-runner.yml            # GitLab Runner installation
-│   ├── inventory/rke2.yml           # Node inventory (rgx-node-01/02/03 + IPs)
-│   ├── group_vars/all.yml           # Shared variables
-│   └── playbooks/
-│       ├── 00a-prepare-nodes-longhorn.yml   # Install open-iscsi + nfs-utils
-│       ├── 00-install-longhorn.yml          # Deploy Longhorn via Helm
-│       ├── 01-deploy-monitoring.yml         # Deploy Prometheus + Loki + Grafana
-│       └── 02-verify-monitoring.yml         # Health checks
-│
-├── frontend/                        # React + Vite + TypeScript + Tailwind CSS
-│   ├── src/pages/                   # Home, GPUs, Pricing, Dashboard
-│   ├── Dockerfile                   # Multi-stage: Node build → nginx serve
-│   └── nginx.conf
-│
-├── backend/                         # Node.js + Express + Prisma
-│   ├── src/
-│   │   ├── index.ts                 # Express server, CORS, routes
-│   │   └── routes/                  # /api/gpus, /api/instances, /health
-│   ├── prisma/schema.prisma         # Database schema
-│   └── Dockerfile                   # Multi-stage: build + prisma migrate
-│
-├── k8s/                             # Kubernetes manifests
-│   ├── namespace.yaml               # kubex namespace
-│   ├── configmap.yaml               # App config (PORT, FRONTEND_URL, DB name)
-│   ├── frontend.yaml                # Deployment + Service (port 80)
-│   ├── backend.yaml                 # Deployment + Service (port 3001) + initContainer
-│   ├── postgres.yaml                # Deployment + Service + Longhorn PVC (5Gi)
-│   └── ingress.yaml                 # NGINX ingress: /api → backend, / → frontend
-│
-├── docker-compose.yml               # Local development (postgres + backend + frontend)
-└── .gitlab-ci.yml                   # 4-stage CI/CD pipeline
+Browser ──► gpu.kubex.my (Cloudflare DNS + TLS)
+               │
+               ▼
+        Worker "kubex"  ── /api/*  ──► Hono routes ──► D1 (SQLite)
+               │                                ▲
+               │ everything else                │
+               ▼                                │
+      Static assets (React build)      Cron Trigger (hourly) ──► billing job
 ```
 
----
+One Worker serves both the React app and the API from the same origin, so there is no CORS and no separate API host.
 
-## Setup
-
-### Prerequisites
-
-- Harvester HCI cluster running with kubeconfig at `~/.kube/harvester-config`
-- Rancher instance accessible at `https://rancher.lab.robusthpc.lan`
-- Ansible and Terraform installed on your local machine
-- AWS CLI configured with ECR access in `ap-southeast-1`
-
-### 1. Provision VMs with Terraform
-
-Terraform creates 3 Rocky Linux 9.7 VMs on Harvester. Node-01 bootstraps the RKE2 cluster; nodes 02-03 join automatically via cloud-init.
-
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-# Fill in: Harvester kubeconfig path, Rancher token, RKE2 join token, SSH public key
-
-terraform init      # Download providers
-terraform plan      # Preview what will be created
-terraform apply     # Provision all 3 VMs (takes ~5-10 min)
-terraform output    # Print node IPs
-```
-
-**VM specs:** 4 vCPU · 8 GiB RAM · 100 GiB disk per node
-
-### 2. Bootstrap Cluster with Ansible
-
-Once VMs are up and RKE2 is running, Ansible configures storage and monitoring:
-
-```bash
-cd ansible
-
-# Full stack — Longhorn + Prometheus + Loki + Grafana
-ansible-playbook site.yml --extra-vars "grafana_admin_password=YourPassword"
-
-# Run specific parts using tags
-ansible-playbook site.yml --tags longhorn     # Storage only
-ansible-playbook site.yml --tags monitoring   # Monitoring only
-
-# Install GitLab Runner on rgx-node-01
-ansible-playbook gitlab-runner.yml
-```
-
-### 3. Run Locally with Docker Compose
-
-```bash
-docker-compose up --build
-
-# Frontend: http://localhost:80
-# Backend:  http://localhost:3001
-# Database: localhost:5432
-```
-
-The `depends_on: condition: service_healthy` ensures the backend waits for PostgreSQL to be ready before starting — the same pattern used in Kubernetes via `initContainer`.
-
-### 4. Deploy to Kubernetes
-
-CI/CD handles this automatically on every push to `main`. To deploy manually:
-
-```bash
-export KUBECONFIG=~/.kube/rke2-config
-
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/
-kubectl rollout status deployment/frontend -n kubex --timeout=300s
-kubectl rollout status deployment/backend -n kubex --timeout=300s
-kubectl get pods -n kubex
-```
-
----
-
-## CI/CD Pipeline
-
-Every push to `main` triggers the full pipeline. From `git push` to live deployment in ~3-5 minutes.
-
-```
-git push → GitLab
-               |
-         GitLab Runner (self-hosted on rgx-node-01, shell executor)
-               |
-         ┌─────▼──────────────────────────────────────────────┐
-         │  test     npx tsc --noEmit                          │  frontend + backend in parallel
-         │  build    docker build -t $IMAGE:$SHA               │  frontend + backend in parallel
-         │  push     aws ecr get-login-password | docker push  │  both images, SHA + latest tags
-         │  deploy   kubectl apply -f k8s/ + rollout status    │  fails pipeline if unhealthy
-         └────────────────────────────────────────────────────┘
-               |
-         gpu.kubex.my updated live
-```
-
-**Key details:**
-- Images tagged with `$CI_COMMIT_SHORT_SHA` — every image traceable to a specific commit
-- `kubectl set image` with commit SHA forces Kubernetes to pull the new image on every deploy (using `latest` alone does not trigger a pull)
-- ECR pull secret recreated idempotently on every deploy (`--dry-run=client | kubectl apply`)
-- `kubectl rollout status --timeout=300s` — pipeline fails if pods don't become healthy within 5 minutes
-- No Cloudflare steps needed in the pipeline — the `cloudflared` tunnel stays connected to the cluster continuously and automatically routes to the newly deployed pods once they become healthy
-
----
-
-## Monitoring
-
-| Service | Access | Purpose |
-|---|---|---|
-| Grafana | `http://10.10.30.10:30300` | Dashboards — node metrics, pod health, logs |
-| Prometheus | `http://10.10.30.10:30090` | Metrics + PromQL queries |
-| Loki | via Grafana → Explore | Log aggregation from all pods via Promtail DaemonSet |
-
-**Useful PromQL queries:**
-```
-# CPU usage per node
-100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
-
-# RAM used %
-(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100
-
-# Disk usage %
-100 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100)
-```
-
-**Loki log queries (in Grafana Explore):**
-```
-{namespace="kubex"}                          # All app logs
-{namespace="kubex", app="backend"}           # Backend only
-{namespace="kubex"} |= "error"              # Filter for errors
-```
-
----
+| Concern | Choice |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, Tailwind, TanStack Query |
+| API | [Hono](https://hono.dev) on Cloudflare Workers, validated with Zod |
+| Database | Cloudflare D1 (SQLite), schema + seed data in `worker/migrations/` |
+| Auth | JWT (HS256) with PBKDF2 password hashing via WebCrypto |
+| Hourly billing | Cron Trigger → `worker/src/billing.ts` (idempotent and crash-safe) |
+| Hosting | Workers + Workers Static Assets (free plan) |
+| CI/CD | GitHub Actions → `wrangler deploy` |
 
 ## Application
 
-A GPU cloud marketplace with 4 pages:
-
-| Route | Page | Description |
+| Route | Page | Auth |
 |---|---|---|
-| `/` | Home | Hero section, live GPU availability widget, hardware tiers |
-| `/gpus` | GPU Instances | Filterable marketplace (Entry / Pro / AI Workstation) |
-| `/pricing` | Pricing | Per-second billing cards, hourly/monthly estimates, FAQ |
-| `/dashboard` | Dashboard | Deployed instances view |
+| `/deploy/gpu`, `/deploy/cpu` | Browse plans and deploy a server | Public (deploying needs sign-in) |
+| `/dashboard`, `/servers`, `/billing`, `/usage`, `/secrets` | Dashboard, servers, balance and top-up rules, usage, SSH keys | Demo data when signed out |
+| `/developers`, `/account`, `/invoices` | API keys, profile, monthly invoices | Sign-in required |
 
-**Backend API endpoints:**
-- `GET /api/gpus` — GPU catalogue with pricing and availability
-- `GET /api/instances` — User's deployed instances
-- `GET /health` — Healthcheck (used by Kubernetes readiness probe)
+API (all under `/api`): `/auth`, `/plans`, `/os-images`, `/instances`, `/billing`, `/usage`, `/invoices`, `/dashboard/summary`,
+`/ssh-keys`, `/api-keys`, `/health`.
 
----
+How billing works: every hour each non-terminated instance is charged its compute rate (running or stopped) plus storage. Charges are
+recorded once per instance per hour (`UNIQUE (instance_id, hour)`) and deducted from the balance in a single D1 transaction. When the
+balance drops below the user's threshold it auto-tops-up; at zero, running instances are stopped.
 
-## Public Access — Cloudflare Tunnel
-
-The application is live at **https://gpu.kubex.my** with a valid TLS certificate. There are no open inbound ports on the home router and no static public IP required.
-
-Instead of port-forwarding through the router, a `cloudflared` daemon runs inside the cluster and maintains a persistent outbound tunnel to Cloudflare's edge.
+## Project structure
 
 ```
-Internet user
-     |
-Cloudflare Edge  (terminates TLS — gpu.kubex.my)
-     |
-Cloudflare Tunnel  (encrypted outbound connection from inside the cluster)
-     |
-cloudflared pod  (running in the cluster, initiates the tunnel)
-     |
-NGINX Ingress Controller
-     |
-     ├── /api  →  backend-svc:3001  →  Backend Pod
-     └── /     →  frontend-svc:80   →  Frontend Pod
+frontend/   React app (Vite)
+worker/     Cloudflare Worker: API, billing cron, D1 migrations, wrangler.jsonc
+backend/    Original Python/FastAPI + Postgres implementation (reference only, not deployed)
+.github/    CI and deploy workflows, Dependabot
 ```
 
-**Why Cloudflare Tunnel instead of port forwarding:**
-- No inbound firewall rules needed on the home router
-- Works even behind CGNAT — no public IP required
-- TLS certificate managed automatically by Cloudflare
-- DDoS protection included at the edge
-- The cluster never exposes any port to the internet directly
+## Run locally
 
-| Item | Detail |
-|---|---|
-| **URL** | https://gpu.kubex.my |
-| **TLS** | Cloudflare-managed certificate |
-| **Deploy time** | ~3–5 minutes from `git push` to live |
-| **HA** | Survives 1 node failure (3-node etcd quorum + Longhorn 3x replication) |
+```bash
+cd frontend && npm ci && VITE_API_URL=/api npm run build    # the Worker serves frontend/dist
+cd ../worker && npm install
+cp .dev.vars.example .dev.vars                              # local JWT secret
+npm run db:migrate:local
+npm run dev                                                 # http://localhost:8787
+npm run smoke                                               # in another terminal: end-to-end API + billing test
+```
 
----
+For frontend hot-reload, run `npm run dev` in `frontend/` instead and point `VITE_API_URL` at `http://localhost:8787/api`.
 
-## Kubernetes Resources
+## Deploy
 
-| Resource | Namespace | Detail |
-|---|---|---|
-| Deployment/frontend | kubex | React app, nginx, ECR image, readiness probe |
-| Deployment/backend | kubex | Node.js API, initContainer waits for postgres |
-| Deployment/postgres | kubex | PostgreSQL 16, Longhorn 5Gi PVC |
-| Ingress/kubex-ingress | kubex | /api → backend-svc:3001, / → frontend-svc:80 |
-| Deployment/prometheus | monitoring | 20Gi Longhorn PVC |
-| Deployment/grafana | monitoring | 5Gi Longhorn PVC, NodePort 30300 |
-| StatefulSet/loki | monitoring | 10Gi Longhorn PVC |
-| DaemonSet/promtail | monitoring | Runs on all 3 nodes |
+One-time setup:
 
----
+```bash
+cd worker
+npx wrangler login
+npx wrangler d1 create kubex-db        # put the printed database_id in wrangler.jsonc
+npx wrangler secret put JWT_SECRET     # a long random value
+# staging: the same with a separate database and secret
+npx wrangler d1 create kubex-staging-db
+npx wrangler secret put JWT_SECRET --env staging
+```
+
+Manual deploy (the pipeline does this for you):
+
+```bash
+cd frontend && VITE_API_URL=/api npm run build
+cd ../worker
+npm run db:migrate:remote && npm run deploy                                              # production
+npx wrangler d1 migrations apply kubex-staging-db --env staging --remote && npx wrangler deploy --env staging   # staging
+```
+
+Smoke-test a deployed environment: `BASE=https://<host>/api SKIP_CRON=1 npm run smoke` (from `worker/`).
+
+## Branching and CI/CD
+
+Two long-lived branches, and `main` only changes through a pull request from `development`:
+
+```
+feature ──PR──► development ──push──► CI ──► deploy STAGING ──► smoke test
+                    │
+                    └────PR (CI must pass)────► main ──push──► CI ──► deploy PRODUCTION ──► health check
+                                                                                             └─ fails → auto-rollback
+```
+
+| Branch | Environment | URL | Database |
+|---|---|---|---|
+| `development` | staging (`kubex-staging`) | https://kubex-staging.ikhmalhisyam4.workers.dev | `kubex-staging-db` |
+| `main` | production (`kubex`) | https://gpu.kubex.my | `kubex-db` |
+
+Workflows in `.github/workflows/`:
+
+- **`ci.yml`** — runs on pull requests (and is reused by the deploy workflow, so nothing deploys unless it passed):
+  - *frontend*: lint, typecheck, build (the build is saved as an artifact so exactly what was tested is what gets deployed)
+  - *worker*: typecheck, bundle both environments (`wrangler deploy --dry-run`), then start the Worker on a local D1 and run the
+    end-to-end smoke test (auth, deploy, billing cron, ...)
+- **`deploy.yml`** — on push to `development` or `main`: CI → apply pending D1 migrations → `wrangler deploy` → verify the site responds.
+  Staging then runs the full smoke test against the live Worker; production rolls back to the previous version if the health check fails.
+  (Database migrations are not rolled back, so keep them backward compatible.)
+- **`dependabot.yml`** — weekly dependency PRs against `development`.
+
+One-time GitHub setup:
+
+1. Repository secrets (Settings → Secrets and variables → Actions):
+
+   | Secret | Value |
+   |---|---|
+   | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account id |
+   | `CLOUDFLARE_API_TOKEN` | API token with *Workers Scripts: Edit* and *D1: Edit* |
+
+2. Branch protection on `main` (Settings → Branches): require a pull request and the `Frontend (lint + build)` and
+   `Worker (typecheck, bundle, integration test)` status checks to pass before merging.
+3. Optional: Settings → Environments → `production` → *Required reviewers* adds a manual approval before production deploys.
+
+## Notes and limits
+
+- Provisioning is simulated: a new instance becomes `running` with a fake IP about 10 seconds after creation (applied on the next read
+  and on each billing tick), since Workers have no long-running process to sleep in.
+- The free plan allows about 100k requests per day and ~10 ms CPU per request. Password hashing is the CPU-heaviest request; if
+  signup or login ever fails with a CPU-limit error, lower `PBKDF2_ITERATIONS` in `worker/src/security.ts` or move to the paid plan.
+- Password hashes from the old Postgres app (bcrypt) are not compatible with this deployment.
 
 ## Author
 
-**Ikhmal** — DevOps Engineer
-
-- GitHub: [Ikhmal-Hisyam-4/Kubernetes-Platform](https://github.com/Ikhmal-Hisyam-4/Kubernetes-Platform)
-- GitLab: [gitlab.com/ikhmal/kubernetes-platform](https://gitlab.com/ikhmal/kubernetes-platform)
-- Live: [gpu.kubex.my](https://gpu.kubex.my)
-- Documentation: [Notion](https://www.notion.so/370f5cca41248112ad22f06d5a35f8f6)
+**Ikhmal** — DevOps Engineer · [GitHub](https://github.com/Ikhmal-Hisyam-4) · [gpu.kubex.my](https://gpu.kubex.my)
