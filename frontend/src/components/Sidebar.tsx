@@ -24,14 +24,12 @@ const deploymentLinks: NavLinkItem[] = [
   { to: '/deploy/cpu', label: 'Deploy CPU', Icon: CpuIcon },
 ]
 
-// Developers is signed-in only — it exposes API key management, so it stays
-// hidden from the logged-out demo view.
-const managementLinks = (isAuthenticated: boolean): NavLinkItem[] => [
+const managementLinks: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', Icon: GridIcon },
   { to: '/servers', label: 'My Servers', Icon: ServerIcon },
   { to: '/secrets', label: 'Secrets', Icon: LockIcon },
   { to: '/account', label: 'Personal Details', Icon: UserIcon },
-  ...(isAuthenticated ? [{ to: '/developers', label: 'Developers', Icon: CodeIcon }] : []),
+  { to: '/developers', label: 'Developers', Icon: CodeIcon },
 ]
 
 const billingLinks: NavLinkItem[] = [
@@ -97,7 +95,7 @@ export function Sidebar() {
         </div>
 
         <NavSection title="Deployment" links={deploymentLinks} />
-        <NavSection title="Management" links={managementLinks(isAuthenticated)} />
+        <NavSection title="Management" links={managementLinks} />
         <NavSection title="Billing" links={billingLinks} />
       </div>
 

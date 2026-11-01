@@ -1,19 +1,21 @@
 // Fixture data shown on public pages when the visitor isn't signed in.
 // Mirrors the shapes in ./types so pages can use it as a drop-in fallback.
 import type {
+  ApiKey,
   DashboardSummary,
   Instance,
   SshKey,
   Threshold,
   Transaction,
   UsageResponse,
+  User,
 } from './types'
 
 export const demoDashboardSummary: DashboardSummary = {
   active_instances: 1,
   total_gpus: 0,
   total_storage_gb: 150,
-  monthly_cost_cents: 61200,
+  monthly_cost_cents: 63120,
 }
 
 export const demoInstances: Instance[] = [
@@ -71,6 +73,31 @@ export const demoSshKeys: SshKey[] = [
     name: 'DATABASE_PASSWORD',
     public_key: 'ssh-ed25519 AAAA...demo',
     created_at: '2026-08-11T00:00:00Z',
+  },
+]
+
+export const demoUser: User = {
+  id: -1,
+  email: 'demo@kubex.my',
+  full_name: 'Demo User',
+  balance_cents: 12840,
+  alert_threshold_cents: 2500,
+  topup_amount_cents: 10000,
+  created_at: '2026-08-01T00:00:00Z',
+}
+
+export const demoApiKeys: ApiKey[] = [
+  {
+    id: -1,
+    name: 'CI pipeline',
+    last_used_at: '2026-08-12T00:00:00Z',
+    created_at: '2026-08-01T00:00:00Z',
+  },
+  {
+    id: -2,
+    name: 'Local development',
+    last_used_at: null,
+    created_at: '2026-08-05T00:00:00Z',
   },
 ]
 

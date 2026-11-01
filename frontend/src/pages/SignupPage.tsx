@@ -57,7 +57,7 @@ export function SignupPage() {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="John Tungging"
+              placeholder="Ikhmal Hisyam"
               className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
             />
           </div>
@@ -69,7 +69,7 @@ export function SignupPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="john@example.com"
+              placeholder="ikhmal@example.com"
               className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
             />
           </div>
