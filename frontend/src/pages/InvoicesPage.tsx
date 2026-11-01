@@ -6,6 +6,8 @@ import { formatCents } from '../lib/money'
 import { PageHeader } from '../components/PageHeader'
 import { CalendarIcon, DocumentIcon } from '../components/icons'
 import { useAuth } from '../lib/auth'
+import { demoUsage } from '../lib/demoData'
+import { DemoBanner } from '../components/DemoBanner'
 import type { UsageResponse } from '../lib/types'
 
 function currentMonthValue() {
@@ -20,23 +22,50 @@ function formatMonthLabel(month: string) {
   })
 }
 
+function downloadInvoiceCsv(invoice: UsageResponse, month: string) {
+  const dollars = (cents: number) => (cents / 100).toFixed(2)
+  const rows = [
+    ['Server', 'Hours billed', 'Compute (USD)', 'Storage (USD)', 'Total (USD)'],
+    ...invoice.items.map((item) => [
+      `"${item.instance_name.replace(/"/g, '""')}"`,
+      String(item.hours),
+      dollars(item.compute_cost_cents),
+      dollars(item.storage_cost_cents),
+      dollars(item.total_cost_cents),
+    ]),
+    ['Total', '', dollars(invoice.total_compute_cents), dollars(invoice.total_storage_cents), dollars(invoice.total_cents)],
+  ]
+  const blob = new Blob([rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `invoice-${month}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export function InvoicesPage() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [month, setMonth] = useState(currentMonthValue())
 
-  const { data: invoice } = useQuery({
+  const { data: invoiceData } = useQuery({
     queryKey: queryKeys.invoice(month),
     queryFn: async () => (await api.get<UsageResponse>(`/invoices?month=${month}`)).data,
+    enabled: isAuthenticated,
   })
+
+  const invoice = isAuthenticated ? invoiceData : demoUsage
 
   const isCurrentMonth = month === currentMonthValue()
 
   return (
     <div>
+      {!isAuthenticated && <DemoBanner />}
+
       <PageHeader
         icon={<DocumentIcon className="h-4 w-4" />}
         title="Monthly Invoice"
-        subtitle={user?.full_name ?? ''}
+        subtitle={isAuthenticated ? (user?.full_name ?? '') : 'Demo account'}
       />
 
       <div className="p-8">
@@ -57,6 +86,14 @@ export function InvoicesPage() {
                 Current Month (Up to Now)
               </span>
             )}
+            <button
+              type="button"
+              disabled={!invoice || invoice.items.length === 0}
+              onClick={() => invoice && downloadInvoiceCsv(invoice, month)}
+              className="ml-auto rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-40"
+            >
+              Download CSV
+            </button>
           </div>
           <p className="mt-3 text-sm text-neutral-500">
             Showing charges for {formatMonthLabel(month)}

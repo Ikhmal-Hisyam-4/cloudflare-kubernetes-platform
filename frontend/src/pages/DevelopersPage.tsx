@@ -1,23 +1,32 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
 import { PageHeader } from '../components/PageHeader'
 import { CodeIcon } from '../components/icons'
 import { useConfirm } from '../lib/useConfirm'
+import { useAuth } from '../lib/auth'
+import { demoApiKeys } from '../lib/demoData'
+import { DemoBanner } from '../components/DemoBanner'
 import type { ApiKey, ApiKeyCreated } from '../lib/types'
 
 export function DevelopersPage() {
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [revealedKey, setRevealedKey] = useState<string | null>(null)
 
-  const { data: keys } = useQuery({
+  const { data: keyData } = useQuery({
     queryKey: queryKeys.apiKeys,
     queryFn: async () => (await api.get<ApiKey[]>('/api-keys')).data,
+    enabled: isAuthenticated,
   })
+
+  const keys = isAuthenticated ? keyData : demoApiKeys
 
   const createMutation = useMutation({
     mutationFn: async () => (await api.post<ApiKeyCreated>('/api-keys', { name })).data,
@@ -36,13 +45,15 @@ export function DevelopersPage() {
 
   return (
     <div>
+      {!isAuthenticated && <DemoBanner />}
+
       <PageHeader
         icon={<CodeIcon className="h-4 w-4" />}
         title="Developers"
         subtitle="Manage API keys for programmatic access"
         action={
           <button
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => (isAuthenticated ? setShowForm((v) => !v) : navigate('/signin'))}
             className="rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800"
           >
             + New API Key
@@ -132,6 +143,7 @@ export function DevelopersPage() {
                     <td className="px-5 py-3">
                       <button
                         onClick={async () => {
+                          if (!isAuthenticated) return navigate('/signin')
                           const ok = await confirm({
                             title: `Revoke API key "${key.name}"?`,
                             description: 'This cannot be undone.',

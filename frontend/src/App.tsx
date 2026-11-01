@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
-import { AuthGuard, PublicGuard } from './components/AuthGuard'
+import { PublicGuard } from './components/AuthGuard'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
@@ -38,12 +38,6 @@ function App() {
             <Route path="/secrets" element={<SecretsPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/usage" element={<UsagePage />} />
-          </Route>
-        </Route>
-
-        {/* Everything else still requires a real session. */}
-        <Route element={<AuthGuard />}>
-          <Route element={<AppLayout />}>
             <Route path="/developers" element={<DevelopersPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/invoices" element={<InvoicesPage />} />

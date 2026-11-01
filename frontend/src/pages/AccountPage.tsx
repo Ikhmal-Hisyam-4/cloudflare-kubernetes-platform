@@ -1,19 +1,26 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
 import { useAuth } from '../lib/auth'
 import { formatCents } from '../lib/money'
+import { demoBalance, demoUser } from '../lib/demoData'
+import { DemoBanner } from '../components/DemoBanner'
 
 export function AccountPage() {
-  const { user } = useAuth()
+  const { user: realUser, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const { data: balance } = useQuery({
+  const { data: balanceData } = useQuery({
     queryKey: queryKeys.balance,
     queryFn: async () => (await api.get<{ balance_cents: number }>('/billing/balance')).data,
+    enabled: isAuthenticated,
   })
+
+  const user = isAuthenticated ? realUser : demoUser
+  const balance = isAuthenticated ? balanceData : demoBalance
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(user?.full_name ?? '')
@@ -27,6 +34,7 @@ export function AccountPage() {
   })
 
   function startEditing() {
+    if (!isAuthenticated) return navigate('/signin')
     setNameDraft(user?.full_name ?? '')
     setIsEditingName(true)
   }
@@ -38,6 +46,8 @@ export function AccountPage() {
 
   return (
     <div>
+      {!isAuthenticated && <DemoBanner />}
+
       <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-8 py-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-sm font-semibold text-neutral-700">
@@ -125,7 +135,10 @@ export function AccountPage() {
                 <p className="text-sm font-medium text-neutral-900">Password</p>
                 <p className="text-xs text-neutral-400">Keep your account secure</p>
               </div>
-              <button className="text-sm font-medium text-emerald-600 hover:underline">
+              <button
+                onClick={() => !isAuthenticated && navigate('/signin')}
+                className="text-sm font-medium text-emerald-600 hover:underline"
+              >
                 Change
               </button>
             </div>
@@ -134,7 +147,10 @@ export function AccountPage() {
                 <p className="text-sm font-medium text-neutral-900">Two-Factor Authentication</p>
                 <p className="text-xs text-neutral-400">Not enabled</p>
               </div>
-              <button className="text-sm font-medium text-emerald-600 hover:underline">
+              <button
+                onClick={() => !isAuthenticated && navigate('/signin')}
+                className="text-sm font-medium text-emerald-600 hover:underline"
+              >
                 Enable
               </button>
             </div>
