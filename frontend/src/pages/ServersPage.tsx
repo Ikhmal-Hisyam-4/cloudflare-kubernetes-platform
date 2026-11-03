@@ -5,11 +5,11 @@ import { api } from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
 import { formatRateCents } from '../lib/money'
 import { useAuth } from '../lib/auth'
-import { demoInstances } from '../lib/demoData'
+import { demoDashboardSummary, demoInstances } from '../lib/demoData'
 import { DemoBanner } from '../components/DemoBanner'
 import { ServerIcon, SearchIcon, GridIcon, ListIcon, ChevronDownIcon, ActivityIcon, SortIcon } from '../components/icons'
 import { useConfirm } from '../lib/useConfirm'
-import type { Instance, InstanceStatus } from '../lib/types'
+import type { DashboardSummary, Instance, InstanceStatus } from '../lib/types'
 
 const statusColors: Record<string, string> = {
   running: 'text-emerald-600',
@@ -315,6 +315,13 @@ export function ServersPage() {
     },
   })
 
+  // Server-side total (compute + storage), the same amount the billing job charges and the Dashboard shows.
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.dashboardSummary,
+    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary')).data,
+    enabled: isAuthenticated,
+  })
+
   const visible = (isAuthenticated ? instances : demoInstances)?.filter(
     (i) => i.status !== 'terminated',
   )
@@ -346,10 +353,7 @@ export function ServersPage() {
   const running = visible?.filter((i) => i.status === 'running').length ?? 0
   const stopped = visible?.filter((i) => i.status === 'stopped').length ?? 0
   const totalCostPerHour =
-    (visible?.reduce(
-      (sum, i) => sum + (i.status === 'running' ? i.rate_running_cents : i.rate_stopped_cents),
-      0,
-    ) ?? 0) / 100
+    ((isAuthenticated ? summary : demoDashboardSummary)?.hourly_cost_cents ?? 0) / 100
 
   return (
     <div>

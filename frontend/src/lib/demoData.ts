@@ -16,6 +16,7 @@ export const demoDashboardSummary: DashboardSummary = {
   total_gpus: 0,
   total_storage_gb: 150,
   monthly_cost_cents: 63120,
+  hourly_cost_cents: 85,
 }
 
 export const demoInstances: Instance[] = [
@@ -28,7 +29,7 @@ export const demoInstances: Instance[] = [
     status: 'running',
     compute_type: 'cpu',
     gpu_model: null,
-    location: 'US-East',
+    location: 'ap-southeast-1 (Singapore)',
     storage_gb: 100,
     rate_running_cents: 85,
     rate_stopped_cents: 0,
@@ -45,7 +46,7 @@ export const demoInstances: Instance[] = [
     status: 'stopped',
     compute_type: 'cpu',
     gpu_model: null,
-    location: 'US-East',
+    location: 'ap-southeast-5 (Malaysia)',
     storage_gb: 50,
     rate_running_cents: 0,
     rate_stopped_cents: 0,

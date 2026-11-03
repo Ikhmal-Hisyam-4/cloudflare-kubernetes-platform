@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { currentMonth, monthBounds } from '../aggregation'
+import { HOURS_PER_MONTH } from '../billing'
 import { requireUser } from '../http'
 import type { AppEnv } from '../types'
 
@@ -11,7 +12,7 @@ dashboard.get('/summary', async (c) => {
   const [start, end] = monthBounds(currentMonth())
 
   // Totals are aggregated in SQL, never summed from a paginated list in the client.
-  const [active, cost] = await c.env.DB.batch<Record<string, number>>([
+  const [active, cost, hourly] = await c.env.DB.batch<Record<string, number>>([
     c.env.DB
       .prepare(
         `SELECT COUNT(i.id) AS active_instances,
@@ -28,7 +29,16 @@ dashboard.get('/summary', async (c) => {
           WHERE i.user_id = ? AND u.hour >= ? AND u.hour < ?`,
       )
       .bind(userId, start, end),
+    // What the next billing hour will charge: compute (running or stopped rate) plus storage,
+    // using the same per-instance rounding as billing.ts (storageCentsPerHour).
+    c.env.DB
+      .prepare(
+        `SELECT COALESCE(SUM(CASE WHEN status = 'running' THEN rate_running_cents ELSE rate_stopped_cents END
+                             + CAST((storage_gb * ? * 2 + ?) / (2 * ?) AS INTEGER)), 0) AS hourly_cost_cents
+           FROM instances WHERE user_id = ? AND status != 'terminated'`,
+      )
+      .bind(Number(c.env.STORAGE_RATE_PER_GB_MONTH_CENTS), HOURS_PER_MONTH, HOURS_PER_MONTH, userId),
   ])
 
-  return c.json({ ...active.results[0], ...cost.results[0] })
+  return c.json({ ...active.results[0], ...cost.results[0], ...hourly.results[0] })
 })

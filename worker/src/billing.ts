@@ -21,13 +21,20 @@ type BillableInstance = {
   rate_stopped_cents: number
 }
 
+export const HOURS_PER_MONTH = 730
+
+/** Hourly storage charge in whole cents, rounded half up from the monthly per-GB rate. */
+export function storageCentsPerHour(storageGb: number, monthRateCents: number): number {
+  return Math.floor((storageGb * monthRateCents * 2 + HOURS_PER_MONTH) / (2 * HOURS_PER_MONTH))
+}
+
 export function currentHour(now = new Date()): string {
   const d = new Date(now)
   d.setUTCMinutes(0, 0, 0)
   return d.toISOString()
 }
 
-export async function recordUsageForHour(db: D1Database, hour: string, storageRateCents: number) {
+export async function recordUsageForHour(db: D1Database, hour: string, storageMonthRateCents: number) {
   const { results } = await db
     .prepare("SELECT id, status, storage_gb, rate_running_cents, rate_stopped_cents FROM instances WHERE status != 'terminated'")
     .all<BillableInstance>()
@@ -36,7 +43,7 @@ export async function recordUsageForHour(db: D1Database, hour: string, storageRa
   await db.batch(
     results.map((inst) => {
       const compute = inst.status === 'running' ? inst.rate_running_cents : inst.rate_stopped_cents
-      const storage = inst.storage_gb * storageRateCents
+      const storage = storageCentsPerHour(inst.storage_gb, storageMonthRateCents)
       return db
         .prepare('INSERT OR IGNORE INTO usage_records (instance_id, hour, compute_cost_cents, storage_cost_cents) VALUES (?, ?, ?, ?)')
         .bind(inst.id, hour, compute, storage)
@@ -90,10 +97,10 @@ export async function settleUsers(db: D1Database) {
 }
 
 export async function runHourlyBilling(
-  env: { DB: D1Database; STORAGE_RATE_PER_GB_HOUR_CENTS: string },
+  env: { DB: D1Database; STORAGE_RATE_PER_GB_MONTH_CENTS: string },
   hour = currentHour(),
 ) {
   await finishProvisioning(env.DB)
-  await recordUsageForHour(env.DB, hour, Number(env.STORAGE_RATE_PER_GB_HOUR_CENTS))
+  await recordUsageForHour(env.DB, hour, Number(env.STORAGE_RATE_PER_GB_MONTH_CENTS))
   await settleUsers(env.DB)
 }

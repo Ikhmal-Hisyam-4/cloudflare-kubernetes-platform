@@ -10,27 +10,30 @@ export function fakeIpAddress(): string {
   return `10.${rand(0, 255)}.${rand(0, 255)}.${rand(1, 254)}`
 }
 
-/** Builds an AWS EC2-style hostname from the fake IP, e.g. gpu-10-42-201-7.kubex.cloud. */
-export function dnsNameForIp(ip: string): string {
-  return `gpu-${ip.replaceAll('.', '-')}.kubex.cloud`
+const REGION_SHORT: Record<string, string> = { 'ap-southeast-1': 'sg', 'ap-southeast-5': 'my' }
+
+/** Builds a short hostname from the fake IP and region, e.g. vm-10-42-201-7.sg.kubex.cloud (same for CPU and GPU). */
+export function dnsNameForIp(ip: string, location: string | null): string {
+  const region = REGION_SHORT[location?.split(' ')[0] ?? ''] ?? 'sg'
+  return `vm-${ip.replaceAll('.', '-')}.${region}.kubex.cloud`
 }
 
 export async function finishProvisioning(db: D1Database, userId?: number): Promise<void> {
   const cutoff = new Date(Date.now() - PROVISION_DELAY_MS).toISOString()
   const query = userId === undefined
-    ? db.prepare("SELECT id FROM instances WHERE status = 'provisioning' AND created_at <= ?").bind(cutoff)
+    ? db.prepare("SELECT id, location FROM instances WHERE status = 'provisioning' AND created_at <= ?").bind(cutoff)
     : db
-        .prepare("SELECT id FROM instances WHERE status = 'provisioning' AND created_at <= ? AND user_id = ?")
+        .prepare("SELECT id, location FROM instances WHERE status = 'provisioning' AND created_at <= ? AND user_id = ?")
         .bind(cutoff, userId)
-  const { results } = await query.all<{ id: number }>()
+  const { results } = await query.all<{ id: number; location: string | null }>()
   if (results.length === 0) return
 
   await db.batch(
-    results.map(({ id }) => {
+    results.map(({ id, location }) => {
       const ip = fakeIpAddress()
       return db
         .prepare("UPDATE instances SET status = 'running', ip_address = ?, dns_name = ? WHERE id = ? AND status = 'provisioning'")
-        .bind(ip, dnsNameForIp(ip), id)
+        .bind(ip, dnsNameForIp(ip, location), id)
     }),
   )
 }

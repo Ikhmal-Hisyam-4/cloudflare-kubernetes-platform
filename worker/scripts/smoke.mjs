@@ -52,7 +52,7 @@ check("other user can't see instance (404)", (await call('GET', `/instances/${id
 
 await new Promise((r) => setTimeout(r, 11_000))
 const after = await call('GET', `/instances/${id}`, { token })
-check('provisioned -> running with ip + dns', after.data.status === 'running' && /^10\./.test(after.data.ip_address) && after.data.dns_name.endsWith('.kubex.cloud'), after.data)
+check('provisioned -> running with ip + dns', after.data.status === 'running' && /^10\./.test(after.data.ip_address) && /^vm-10-[\d-]+\.(sg|my)\.kubex\.cloud$/.test(after.data.dns_name) && /^ap-southeast-(1 \(Singapore\)|5 \(Malaysia\))$/.test(after.data.location), after.data)
 
 check('stop', (await call('POST', `/instances/${id}/stop`, { token })).data.status === 'stopped')
 check('start', (await call('POST', `/instances/${id}/start`, { token })).data.status === 'running')
@@ -81,12 +81,12 @@ if (CRON) {
   check('cron trigger ran', (await trigger()).ok)
   await new Promise((r) => setTimeout(r, 1500))
   const usage = await call('GET', '/usage', { token })
-  // cpu plan: running 9c + storage 80GB * 1c = 89c for the hour.
-  check('usage has 1 hour = 89c', usage.data.items.length === 1 && usage.data.total_cents === 89, usage.data)
-  charged = 89
+  // cpu plan: running 9c + storage 80GB at 10c/GB/month = 1c/hour (rounded) = 10c for the hour.
+  check('usage has 1 hour = 10c', usage.data.items.length === 1 && usage.data.total_cents === 10, usage.data)
+  charged = 10
   balance = 1000 - charged
-  // 911 is above the 500 threshold, so no top-up.
-  check('balance charged once (911)', (await call('GET', '/billing/balance', { token })).data.balance_cents === balance)
+  // 990 is above the 500 threshold, so no top-up.
+  check('balance charged once (990)', (await call('GET', '/billing/balance', { token })).data.balance_cents === balance)
 
   await trigger()
   await new Promise((r) => setTimeout(r, 1500))
@@ -97,7 +97,7 @@ check('invoice for month', (await call('GET', `/invoices?month=${month}`, { toke
 check('invoice bad month 422', (await call('GET', '/invoices?month=2026-13', { token })).status === 422)
 
 const dash = await call('GET', '/dashboard/summary', { token })
-check('dashboard summary', dash.data.active_instances === 1 && dash.data.total_storage_gb === 80 && dash.data.monthly_cost_cents === charged, dash.data)
+check('dashboard summary', dash.data.active_instances === 1 && dash.data.total_storage_gb === 80 && dash.data.monthly_cost_cents === charged && dash.data.hourly_cost_cents === 10, dash.data)
 
 check('terminate', (await call('DELETE', `/instances/${id}`, { token })).data.status === 'terminated')
 check('start terminated -> 400', (await call('POST', `/instances/${id}/start`, { token })).status === 400)
