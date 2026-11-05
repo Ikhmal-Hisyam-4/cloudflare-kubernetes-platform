@@ -101,4 +101,5 @@ export interface DashboardSummary {
   total_gpus: number
   total_storage_gb: number
   monthly_cost_cents: number
+  hourly_cost_cents: number
 }

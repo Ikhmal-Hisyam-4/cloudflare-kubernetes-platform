@@ -29,7 +29,7 @@
 
   "vars": {
     "JWT_EXPIRE_MINUTES": "1440",
-    "STORAGE_RATE_PER_GB_HOUR_CENTS": "1"
+    "STORAGE_RATE_PER_GB_MONTH_CENTS": "10"
   },
 
   // Everything above is production (`wrangler deploy`). Staging is `wrangler deploy --env staging`:
@@ -52,7 +52,7 @@
       "triggers": { "crons": ["0 * * * *"] },
       "vars": {
         "JWT_EXPIRE_MINUTES": "1440",
-        "STORAGE_RATE_PER_GB_HOUR_CENTS": "1"
+        "STORAGE_RATE_PER_GB_MONTH_CENTS": "10"
       }
     }
   }

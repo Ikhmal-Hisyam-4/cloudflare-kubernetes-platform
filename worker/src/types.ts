@@ -3,7 +3,7 @@ export type Env = {
   ASSETS: Fetcher
   JWT_SECRET: string
   JWT_EXPIRE_MINUTES: string
-  STORAGE_RATE_PER_GB_HOUR_CENTS: string
+  STORAGE_RATE_PER_GB_MONTH_CENTS: string
 }
 
 export type User = {

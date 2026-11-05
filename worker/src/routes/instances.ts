@@ -8,12 +8,7 @@ export const instances = new Hono<AppEnv>()
 instances.use(requireUser)
 
 // Simulated datacenter regions, assigned randomly at deploy time (frozen, like the rate).
-const LOCATIONS = [
-  'us-east-1 (Virginia)',
-  'us-west-2 (Oregon)',
-  'eu-central-1 (Frankfurt)',
-  'ap-southeast-1 (Singapore)',
-]
+const LOCATIONS = ['ap-southeast-1 (Singapore)', 'ap-southeast-5 (Malaysia)']
 
 const createSchema = z.object({
   plan_id: z.number().int(),
